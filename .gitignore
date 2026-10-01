@@ -1,0 +1,46 @@
+# 依赖
+node_modules/
+
+# 构建产物
+server/dist/
+web/dist/
+desktop/dist/
+desktop/release/
+desktop/server-dist/
+tauri/target/
+
+# 本地配置与用户数据（含配对码与笔记，绝不提交）
+config.json
+vault/
+Lanmd-data/
+
+# 日志与临时文件
+*.log
+*.log.old
+*.tmp
+tmp/
+temp/
+
+# IDE / 系统
+.vscode/
+.idea/
+*.suo
+*.user
+.DS_Store
+Thumbs.db
+desktop/.vite/
+
+# Agent 工作目录
+.claude/
+.cursor/
+.agent/
+
+# Tauri 自动生成的 schema
+tauri/app/gen/
+
+# 本地文档（交付报告 / 设计规划，不入库）
+DELIVERY.md
+docs/
+
+# 桌面图标构建产物（npm run desktop:icon 重新生成）
+desktop/build/

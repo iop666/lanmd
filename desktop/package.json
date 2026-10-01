@@ -1,0 +1,25 @@
+{
+  "name": "lanmd-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Lanmd tray shell (Electron)",
+  "main": "main.js",
+  "scripts": {
+    "icon": "node scripts/make-icon.mjs",
+    "dev": "electron .",
+    "prepare-dist": "node scripts/prepare-dist.mjs",
+    "dist": "npm run prepare-dist && electron-builder --win portable"
+  },
+  "dependencies": {
+    "@fastify/static": "^8.0.3",
+    "chokidar": "^4.0.1",
+    "fastify": "^5.0.1",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "electron": "44.5.1",
+    "electron-builder": "26.15.3",
+    "png-to-ico": "^1.0.6",
+    "sharp": "^0.33.5"
+  }
+}

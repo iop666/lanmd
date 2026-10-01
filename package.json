@@ -1,0 +1,42 @@
+{
+  "name": "mdlive",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "server",
+    "web",
+    "desktop"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n server,web -c blue,green \"npm:dev:server\" \"npm:dev:web\"",
+    "dev:server": "npm run dev -w server",
+    "dev:web": "npm run dev -w web",
+    "build": "npm run build -w server && npm run build -w web",
+    "start": "node server/dist/index.js",
+    "pretest": "npm run build",
+    "test": "node --test --test-concurrency=1 scripts/test-api.mjs scripts/test-sync.mjs scripts/test-host.mjs",
+    "test:rust": "node --test --test-concurrency=1 --test-name-pattern=. scripts/test-api.mjs scripts/test-sync.mjs",
+    "desktop:icon": "npm run icon -w desktop",
+    "desktop:dev": "npm run build -w server && npm run build -w web && npm run dev -w desktop",
+    "desktop:build": "npm run build && npm run icon -w desktop && npm run dist -w desktop",
+    "tauri:server": "cargo build --release -p lanmd-server --manifest-path tauri/Cargo.toml",
+    "tauri:dev": "npm run build -w web && cargo build --release -p lanmd-app --manifest-path tauri/Cargo.toml",
+    "tauri:build": "npm run build -w web && cargo build --release --manifest-path tauri/Cargo.toml"
+  },
+  "devDependencies": {
+    "@types/node": "^20.16.10",
+    "concurrently": "^9.0.1",
+    "typescript": "^5.6.2"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "esbuild@0.21.5": true,
+    "electron@44.5.1": true,
+    "electron-builder@26.15.3": true,
+    "sharp@0.33.5": true
+  }
+}
