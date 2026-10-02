@@ -159,7 +159,8 @@ export default function ConnectInfo({ token, onClose, firstTime }: Props) {
           ) : null}
           <p className="tunnel-hint">
             使用 natfrp / frp 等工具把本机端口（8787）映射到公网，把得到的地址填到这里，
-            手机在任何网络都能扫码连接。配对码是唯一防线，公网环境请使用长且随机的口令。
+            手机在任何网络都能扫码连接。内地节点多要求在隧道中启用「自动 HTTPS」，
+            否则明文 HTTP 访问会被拦截。配对码是唯一防线，公网环境请使用长且随机的口令。
           </p>
         </div>
 

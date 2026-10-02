@@ -1,4 +1,4 @@
-//! S1 回归测试：`RunningServer::stop()` 必须立即使所有 SSE 流断开，
+//! 优雅停服集成测试：`RunningServer::stop()` 必须立即使所有 SSE 流断开，
 //! 并在有连接挂起的情况下于时限内返回（不得永久挂起）。
 //!
 //! 流程：进程内 start_server → 建立 2 条 SSE（各收到 ": hello"）→ stop()
@@ -11,7 +11,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[tokio::test(flavor = "multi_thread")]
 async fn stop_breaks_sse_and_returns_within_2s() {
-    let data_dir = std::env::temp_dir().join(format!("lanmd-s1-test-{}", std::process::id()));
+    let data_dir = std::env::temp_dir().join(format!("lanmd-stop-test-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&data_dir);
     std::fs::create_dir_all(&data_dir).unwrap();
     // 独立端口 + 预设配对码（/api/events 需要鉴权），避免与开发环境/其他测试冲突

@@ -29,8 +29,9 @@ export default function Connect({ onPaired }: Props) {
     try {
       const r = await api.pair(t);
       onPaired(r.token, false);
-    } catch {
-      setErr('配对码不正确');
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      setErr(status === 401 ? '配对码不正确' : '无法连接服务——请确认 Lanmd 正在运行（托盘有图标）');
     } finally {
       setBusy(false);
     }

@@ -2213,7 +2213,7 @@ dependencies = [
 
 [[package]]
 name = "lanmd-app"
-version = "1.0.0"
+version = "0.2.0"
 dependencies = [
  "arboard",
  "chrono",
@@ -2230,7 +2230,7 @@ dependencies = [
 
 [[package]]
 name = "lanmd-server"
-version = "1.0.0"
+version = "0.2.0"
 dependencies = [
  "async-stream",
  "axum",
