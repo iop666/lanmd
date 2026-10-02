@@ -8,6 +8,8 @@ export interface Config {
   /** 空字符串 = 未设置配对码（首次由浏览器设置）；也可被 MDLIVE_TOKEN 环境变量覆盖 */
   token: string;
   ignore: string[];
+  /** 公网/隧道访问地址（如内网穿透域名），设置后连接信息与二维码优先使用 */
+  publicUrl: string;
 }
 
 export interface LoadedConfig {
@@ -26,7 +28,7 @@ type LogFn = (msg: string) => void;
 
 export function loadConfig(log: LogFn): LoadedConfig {
   const root = projectRoot();
-  // MDLIVE_DATA_DIR：覆盖 config.json / 默认 vault 的所在目录（Electron 便携模式使用）
+  // MDLIVE_DATA_DIR：覆盖 config.json / 默认 vault 的所在目录（图形外壳便携模式使用）
   const dataDir = process.env.MDLIVE_DATA_DIR ? path.resolve(process.env.MDLIVE_DATA_DIR) : root;
   const cfgPath = path.join(dataDir, 'config.json');
   const envVault = process.env.MDLIVE_VAULT;
@@ -39,6 +41,7 @@ export function loadConfig(log: LogFn): LoadedConfig {
     port: 8787,
     token: '',
     ignore: ['.git', '.obsidian', 'node_modules', '.trash'],
+    publicUrl: '',
   };
 
   const readFromDisk = (): void => {
@@ -52,6 +55,7 @@ export function loadConfig(log: LogFn): LoadedConfig {
       if (typeof raw.vault === 'string' && raw.vault !== '') cfg.vault = path.resolve(dataDir, raw.vault);
       if (typeof raw.port === 'number' && Number.isFinite(raw.port)) cfg.port = raw.port;
       if (typeof raw.token === 'string') cfg.token = raw.token;
+      if (typeof raw.publicUrl === 'string') cfg.publicUrl = raw.publicUrl.replace(/\/+$/, '');
       if (Array.isArray(raw.ignore)) cfg.ignore = raw.ignore.filter((x): x is string => typeof x === 'string');
       extraKeys = raw;
     } catch (e) {
@@ -86,6 +90,7 @@ export function loadConfig(log: LogFn): LoadedConfig {
     if (Number.isFinite(p) && p > 0) cfg.port = p;
   }
   if (process.env.MDLIVE_TOKEN) cfg.token = process.env.MDLIVE_TOKEN;
+  if (process.env.MDLIVE_PUBLIC_URL) cfg.publicUrl = process.env.MDLIVE_PUBLIC_URL.replace(/\/+$/, '');
   fs.mkdirSync(cfg.vault, { recursive: true });
 
   return {

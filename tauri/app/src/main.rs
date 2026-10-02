@@ -203,17 +203,23 @@ fn copy_lan_url(app: &AppHandle) {
     let port = s.port;
     drop(guard);
     // 取第一个私网地址 + 带配对码（手机粘贴即用）
-    let urls = lanmd_server::lan::lan_addresses();
+    let public_url = read_config_str(&data_dir, "publicUrl")
+        .unwrap_or_default()
+        .trim_end_matches('/')
+        .to_string();
     let token = read_token(&data_dir).unwrap_or_default();
-    let target = match urls.first() {
-        Some(ip) => {
-            if token.is_empty() {
-                format!("http://{ip}:{port}")
-            } else {
-                format!("http://{ip}:{port}/?token={}", urlenc(&token))
-            }
+    let base = if !public_url.is_empty() {
+        public_url
+    } else {
+        match lanmd_server::lan::lan_addresses().first() {
+            Some(ip) => format!("http://{ip}:{port}"),
+            None => format!("http://localhost:{port}"),
         }
-        None => format!("http://localhost:{port}"),
+    };
+    let target = if token.is_empty() {
+        base
+    } else {
+        format!("{base}/?token={}", urlenc(&token))
     };
     if let Ok(mut cb) = arboard::Clipboard::new() {
         let _ = cb.set_text(target.clone());
@@ -222,9 +228,13 @@ fn copy_lan_url(app: &AppHandle) {
 }
 
 fn read_token(data_dir: &PathBuf) -> Option<String> {
+    read_config_str(data_dir, "token")
+}
+
+fn read_config_str(data_dir: &PathBuf, key: &str) -> Option<String> {
     let raw = std::fs::read_to_string(data_dir.join("config.json")).ok()?;
-    let v: serde_json::Value = serde_json::from_str(&raw).ok()?;
-    v.get("token").and_then(|t| t.as_str()).map(|s| s.to_string())
+    let v: serde_json::Value = serde_json::from_str(raw.trim_start_matches('\u{feff}')).ok()?;
+    v.get(key).and_then(|t| t.as_str()).map(|s| s.to_string())
 }
 
 fn urlenc(s: &str) -> String {

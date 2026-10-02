@@ -43,7 +43,7 @@ export interface RunningServer {
   vault: string;
 }
 
-/** 启动完整服务（HTTP + SSE + watcher + timed），返回句柄。可被 CLI 与 Electron 外壳共同使用 */
+/** 启动完整服务（HTTP + SSE + watcher + timed），返回句柄。可被 CLI 与图形外壳共同使用 */
 export async function startServer(opts?: StartServerOpts): Promise<RunningServer> {
   const { cfg, persist } = loadConfig((m) => log('info', m));
   const tokenFromEnv = !!process.env.MDLIVE_TOKEN;
@@ -77,6 +77,12 @@ export async function startServer(opts?: StartServerOpts): Promise<RunningServer
     },
     tokenFromEnv,
     port: cfg.port,
+    getPublicUrl: () => cfg.publicUrl,
+    setPublicUrl: (url) => {
+      cfg.publicUrl = url;
+      persist();
+      log('info', url === '' ? '已清除公网地址' : `公网地址已设置: ${url}`);
+    },
   });
 
   app.setErrorHandler((rawErr, req, reply) => {
@@ -175,7 +181,7 @@ async function main(): Promise<void> {
   process.on('SIGTERM', () => void shutdown());
 }
 
-// 仅当被直接执行（node dist/index.js）时启动 CLI；被 import（Electron 外壳）时不自动跑
+// 仅当被直接执行（node dist/index.js）时启动 CLI；被 import（图形外壳）时不自动跑
 const isDirectRun =
   process.argv[1] !== undefined &&
   (() => {

@@ -108,6 +108,7 @@ pub async fn start_server(opts: StartOpts) -> Result<RunningServer, ApiError> {
         .route("/api/pair", post(pair))
         .route("/api/setup-pin", post(setup_pin))
         .route("/api/connect-info", get(connect_info))
+        .route("/api/public-url", post(set_public_url))
         .route("/api/timed", get(timed_list))
         .fallback(static_fallback)
         .layer(axum::middleware::from_fn_with_state(
@@ -477,14 +478,22 @@ async fn setup_pin(
 async fn connect_info(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    let (token, port) = {
+    let (token, port, public_url) = {
         let cfg = state.cfg.read().unwrap();
-        (cfg.token.clone(), cfg.port)
+        (cfg.token.clone(), cfg.port, cfg.public_url.clone())
     };
-    let urls: Vec<String> = lan::lan_addresses()
+    let lan: Vec<String> = lan::lan_addresses()
         .into_iter()
         .map(|ip| format!("http://{ip}:{port}"))
         .collect();
+    // 公网/隧道地址优先（异网设备使用）
+    let urls: Vec<String> = if public_url.is_empty() {
+        lan
+    } else {
+        let mut v = vec![public_url.clone()];
+        v.extend(lan);
+        v
+    };
     let mut qr: Option<String> = None;
     if let (Some(first), false) = (urls.first(), token.is_empty()) {
         let target = format!("{first}/?token={}", encode(&token));
@@ -501,7 +510,48 @@ async fn connect_info(
             ));
         }
     }
-    Ok(Json(serde_json::json!({ "urls": urls, "qr": qr })))
+    Ok(Json(
+        serde_json::json!({ "urls": urls, "qr": qr, "publicUrl": public_url }),
+    ))
+}
+
+/// 校验公网（隧道）地址：http(s) 开头、无空白与危险字符、长度合理
+fn validate_public_url(raw: &str) -> Option<String> {
+    let u = raw.trim().trim_end_matches('/');
+    if u.is_empty() {
+        return Some(String::new()); // 空串 = 清除
+    }
+    if u.len() > 300 || !(u.starts_with("http://") || u.starts_with("https://")) {
+        return None;
+    }
+    if u
+        .chars()
+        .any(|c| c.is_whitespace() || matches!(c, '\'' | '"' | '<' | '>' | '`'))
+    {
+        return None;
+    }
+    Some(u.to_string())
+}
+
+async fn set_public_url(
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<serde_json::Value>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let raw = body.get("url").and_then(|v| v.as_str()).unwrap_or("");
+    let Some(url) = validate_public_url(raw) else {
+        return Err(ApiError::bad("需要合法的 http(s) 地址"));
+    };
+    {
+        let mut cfg = state.cfg.write().unwrap();
+        cfg.public_url = url.clone();
+        (state.persist)(&cfg);
+    }
+    if url.is_empty() {
+        log::info!("已清除公网地址");
+    } else {
+        log::info!("公网地址已设置: {url}");
+    }
+    Ok(Json(serde_json::json!({ "ok": true, "publicUrl": url })))
 }
 
 async fn timed_list(

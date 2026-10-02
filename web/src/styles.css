@@ -669,6 +669,71 @@ button.link {
   word-break: break-all;
 }
 
+/* 隧道穿透设置 */
+.tunnel-section {
+  border-top: 1px solid var(--border);
+  margin-top: 12px;
+  padding-top: 10px;
+}
+
+.tunnel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.tunnel-current {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin: 6px 0 0;
+  word-break: break-all;
+}
+
+.tunnel-current code {
+  background: var(--bg-hover);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.tunnel-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.tunnel-edit input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.tunnel-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.tunnel-actions .danger {
+  color: var(--danger);
+}
+
+.tunnel-ok {
+  font-size: 13px;
+  color: var(--ok);
+  margin: 6px 0 0;
+}
+
+.tunnel-hint {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin: 8px 0 0;
+  line-height: 1.5;
+}
+
 /* 倒计时暂存库 */
 .timed-panel {
   width: 640px;

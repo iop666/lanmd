@@ -12,7 +12,6 @@
 |---|---|
 | **`lanmd-v*.exe`** | 推荐：托盘应用，免安装单文件（约 7.6 MB） |
 | `lanmd-server-v*.exe` | 无托盘 CLI 版，环境变量配置，适合脚本/服务器 |
-| `lanmd-electron-v*.exe` | Electron 便携版（约 97 MB），功能相同 |
 
 ## 快速开始
 
@@ -69,9 +68,6 @@ npm test            # 42 项自动化测试（HTTP 级，两套服务端共用�
 
 # Tauri 托盘版（推荐，产物 tauri/target/release/lanmd.exe）
 npm run tauri:build
-
-# Electron 便携版（产物 desktop/release/Lanmd.exe）
-npm run desktop:build
 ```
 
 目录结构：
@@ -79,10 +75,31 @@ npm run desktop:build
 ```
 ├─ server/        # Node.js + Fastify 服务端（TypeScript）
 ├─ web/           # React + Vite 前端（两种服务端共用）
-├─ desktop/       # Electron 托盘外壳
 ├─ tauri/         # Tauri v2 外壳 + Rust 服务端（axum + notify）
 └─ scripts/       # 自动化测试与工具脚本
 ```
+
+## 异网访问（内网穿透）
+
+默认只在局域网内可用。跨网络访问（例如在公司连家里的笔记）需要一条隧道，推荐两种方式：
+
+**方式一：内网穿透（如 [SakuraFrp / natfrp](https://www.natfrp.com/)）**
+
+1. 在 natfrp 完成实名认证，创建一条 **HTTP 隧道**：本地 IP `127.0.0.1`，本地端口 `8787`
+2. 启动隧道后会得到一个公网地址（如 `https://xxx.natfrp.cloud` 或带端口的域名）
+3. 打开页面侧栏的「连接信息 / 配对码」，在**隧道穿透（异网访问）**中填入该地址并保存（也可直接改 `Lanmd-data/config.json` 的 `publicUrl` 字段后重启）
+
+   二维码会立即切换为公网地址，手机在**任何网络**扫码即可连接；托盘「复制地址」同样优先复制隧道地址。
+
+注意事项：
+
+- 配对码是唯一防线，公网环境请使用**长且随机的口令**（服务端对连接尝试有每分钟 10 次的限速）
+- 流量经由穿透服务商转发且为明文 HTTP——介意的话优先选支持 TLS 的隧道类型，或用方式二
+- 经隧道接入时，所有用户共享同一条限速通道（来源 IP 相同）
+
+**方式二：组网 VPN（更安全，推荐）**
+
+设备都装上 [Tailscale](https://tailscale.com/)（或 ZeroTier / WireGuard），手机直接访问电脑的虚拟 IP（如 `http://100.x.x.x:8787`）。流量端到端加密、不经第三方转发、无需改任何配置，二维码照常可用。
 
 ## 安全说明
 

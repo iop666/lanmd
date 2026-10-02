@@ -2,5 +2,11 @@
   "vault": "D:/Notes",
   "port": 8787,
   "token": "auto-generated-if-empty",
-  "ignore": [".git", ".obsidian", "node_modules", ".trash"]
+  "ignore": [
+    ".git",
+    ".obsidian",
+    "node_modules",
+    ".trash"
+  ],
+  "publicUrl": ""
 }

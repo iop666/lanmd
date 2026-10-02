@@ -81,6 +81,7 @@ export interface HealthResp {
 export interface ConnectInfo {
   urls: string[];
   qr: string | null;
+  publicUrl: string;
 }
 
 export interface TimedSlot {
@@ -99,6 +100,8 @@ export const api = {
   pair: (code: string) => request<{ token: string }>('POST', '/api/pair', { code }, { noToken: true }),
   setupPin: (code: string) => request<{ token: string }>('POST', '/api/setup-pin', { code }, { noToken: true }),
   connectInfo: () => request<ConnectInfo>('GET', '/api/connect-info'),
+  setPublicUrl: (url: string) =>
+    request<{ ok: true; publicUrl: string }>('POST', '/api/public-url', { url }),
   tree: () => request<{ items: TreeNode[] }>('GET', '/api/tree'),
   getFile: (path: string) => request<FileResp>('GET', `/api/file?path=${enc(path)}`),
   putFile: (path: string, content: string, baseVersion: string | null, keepalive = false) =>

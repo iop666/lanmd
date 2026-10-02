@@ -9,6 +9,10 @@ interface PairDeps {
   /** 环境变量注入的 token 时不允许 setup */
   tokenFromEnv: boolean;
   port: number;
+  /** 公网/隧道访问地址（异网设备使用），为空时返回局域网地址 */
+  getPublicUrl: () => string;
+  /** 设置/清除公网地址并持久化（空字符串 = 清除） */
+  setPublicUrl: (url: string) => void;
 }
 
 const eq = (a: string, b: string): boolean => {
@@ -66,10 +70,12 @@ export function registerPairRoutes(app: FastifyInstance, deps: PairDeps): void {
     return { token };
   });
 
-  // 已配对设备查询连接信息：局域网地址 + 含配对码的二维码
+  // 已配对设备查询连接信息：公网地址优先，其次局域网地址；二维码含配对码
   app.get('/api/connect-info', async () => {
     const token = deps.getToken();
-    const urls = lanAddresses().map((ip) => `http://${ip}:${deps.port}`);
+    const lan = lanAddresses().map((ip) => `http://${ip}:${deps.port}`);
+    const publicUrl = deps.getPublicUrl();
+    const urls = publicUrl !== '' ? [publicUrl, ...lan] : lan;
     let qr: string | null = null;
     if (urls.length > 0 && token !== '') {
       try {
@@ -82,6 +88,20 @@ export function registerPairRoutes(app: FastifyInstance, deps: PairDeps): void {
         qr = null;
       }
     }
-    return { urls, qr };
+    return { urls, qr, publicUrl };
+  });
+
+  // 设置/清除公网（隧道）地址；校验合法 URL
+  app.post('/api/public-url', async (req, reply) => {
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const raw = typeof body.url === 'string' ? body.url.trim().replace(/\/+$/, '') : '';
+    if (raw !== '') {
+      const forbidden = /[\s"'<>\\]/;
+      if (raw.length > 300 || !/^https?:\/\/[^\s/]+/.test(raw) || forbidden.test(raw)) {
+        return reply.code(400).send({ error: '需要合法的 http(s) 地址' });
+      }
+    }
+    deps.setPublicUrl(raw);
+    return { ok: true, publicUrl: raw };
   });
 }

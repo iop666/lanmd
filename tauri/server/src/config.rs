@@ -9,6 +9,9 @@ pub struct Config {
     pub port: u16,
     pub token: String,
     pub ignore: Vec<String>,
+    /// 公网/隧道访问地址（异网设备使用），为空时连接信息返回局域网地址
+    #[serde(rename = "publicUrl")]
+    pub public_url: String,
 }
 
 pub struct LoadedConfig {
@@ -40,6 +43,7 @@ pub fn load_config(data_dir: &Path) -> LoadedConfig {
             "node_modules".into(),
             ".trash".into(),
         ],
+        public_url: String::new(),
     };
     let extra: Arc<Mutex<serde_json::Value>> = Arc::new(Mutex::new(serde_json::Value::Null));
     let mut file_exists = false;
@@ -67,6 +71,9 @@ pub fn load_config(data_dir: &Path) -> LoadedConfig {
                     }
                     if let Some(token) = v.get("token").and_then(|x| x.as_str()) {
                         cfg.token = token.to_string();
+                    }
+                    if let Some(pu) = v.get("publicUrl").and_then(|x| x.as_str()) {
+                        cfg.public_url = pu.trim_end_matches('/').to_string();
                     }
                     if let Some(ignore) = v.get("ignore").and_then(|x| x.as_array()) {
                         // 尊重空数组（用户可清空忽略列表）
@@ -101,6 +108,11 @@ pub fn load_config(data_dir: &Path) -> LoadedConfig {
             cfg.token = t;
         }
     }
+    if let Ok(pu) = std::env::var("MDLIVE_PUBLIC_URL") {
+        if !pu.is_empty() {
+            cfg.public_url = pu.trim_end_matches('/').to_string();
+        }
+    }
     let _ = fs::create_dir_all(Path::new(&cfg.vault));
 
     let persist_dir = data_dir.to_path_buf();
@@ -126,6 +138,7 @@ fn persist_inner(cfg_path: &Path, cfg: &Config, extra: &Mutex<serde_json::Value>
     obj.insert("port".into(), serde_json::json!(cfg.port));
     obj.insert("token".into(), serde_json::json!(cfg.token));
     obj.insert("ignore".into(), serde_json::json!(cfg.ignore));
+    obj.insert("publicUrl".into(), serde_json::json!(cfg.public_url));
     let out = serde_json::to_string_pretty(&base).unwrap_or_default();
     let _ = fs::write(cfg_path, out + "\n");
 }

@@ -29,6 +29,7 @@ const HB = () => ({ Authorization: 'Bearer pair123', 'Content-Type': 'applicatio
 function spawnServer(vault, port, tokenEnv) {
   const env = { ...process.env, MDLIVE_VAULT: vault, MDLIVE_PORT: String(port) };
   if (tokenEnv) env.MDLIVE_TOKEN = tokenEnv;
+  if (tokenEnv === TOKEN) env.MDLIVE_PUBLIC_URL = 'https://lanmd-demo.test';
   const s = IS_NODE
     ? spawn(process.execPath, [SERVER_BIN], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'] })
     : spawn(SERVER_BIN, [], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -484,6 +485,51 @@ test('connect-info 无 token 401；token 校验通过返回 urls+qr', async () =
   const j = await res.json();
   assert.ok(Array.isArray(j.urls));
   assert.ok(typeof j.qr === 'string' && j.qr.startsWith('data:image/'));
+});
+
+test('connect-info：publicUrl 优先于局域网地址（MDLIVE_PUBLIC_URL）', async () => {
+  const res = await fetch(`${base}/api/connect-info`, { headers: H });
+  assert.equal(res.status, 200);
+  const j = await res.json();
+  assert.equal(j.urls[0], 'https://lanmd-demo.test', `公网地址应排首位，实际 ${j.urls[0]}`);
+  assert.ok(j.qr.includes('https%3A%2F%2Flanmd-demo.test') || j.qr.length > 100, '二维码应基于公网地址生成');
+});
+
+
+
+test('public-url：设置、生效、清除（MDLIVE_PUBLIC_URL 覆盖后可被 API 修改）', async () => {
+  // 设置新地址
+  const set1 = await fetch(`${base}/api/public-url`, {
+    method: 'POST',
+    headers: H,
+    body: JSON.stringify({ url: 'https://tunnel2.example.com/' }),
+  });
+  assert.equal(set1.status, 200);
+  assert.equal((await set1.json()).publicUrl, 'https://tunnel2.example.com', '尾部斜杠应被去除');
+  let ci = await (await fetch(`${base}/api/connect-info`, { headers: H })).json();
+  assert.equal(ci.publicUrl, 'https://tunnel2.example.com');
+  assert.equal(ci.urls[0], 'https://tunnel2.example.com');
+
+  // 非法地址 400
+  for (const bad of ['ftp://x.com', 'https://a b.com', 'javascript:alert(1)', 'x'.repeat(301)]) {
+    const r = await fetch(`${base}/api/public-url`, {
+      method: 'POST',
+      headers: H,
+      body: JSON.stringify({ url: bad }),
+    });
+    assert.equal(r.status, 400, `非法地址应 400: ${bad.slice(0, 30)}`);
+  }
+
+  // 清除 → 恢复局域网地址
+  const clear = await fetch(`${base}/api/public-url`, {
+    method: 'POST',
+    headers: H,
+    body: JSON.stringify({ url: '' }),
+  });
+  assert.equal(clear.status, 200);
+  ci = await (await fetch(`${base}/api/connect-info`, { headers: H })).json();
+  assert.equal(ci.publicUrl, '');
+  assert.ok(ci.urls[0].startsWith('http://192.168.') || ci.urls[0].startsWith('http://10.') || ci.urls[0].startsWith('http://172.'), '清除后应回到局域网地址');
 });
 
 // ===== 倒计时暂存库 =====

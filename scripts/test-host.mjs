@@ -1,4 +1,4 @@
-// startServer 导出路径的测试（Electron 外壳使用同一入口）：
+// startServer 导出路径的测试（图形外壳使用同一入口）：
 // 起服 → health 可用 → stop → 端口释放 → 重启 → 再停。验证可重入与干净关闭。
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
