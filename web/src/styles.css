@@ -133,18 +133,63 @@ button.link {
 }
 
 .sidebar-foot {
+  position: relative;
   border-top: 1px solid var(--border);
   padding: 8px;
   display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
-.sidebar-foot button {
+.sidebar-foot .foot-connect {
   flex: 1;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 0 4px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-foot .foot-task-btn {
+  position: relative;
+  flex: none;
+  min-width: 34px;
+  padding: 4px 8px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-dim);
+}
+
+.sidebar-foot > button:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.foot-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border: 2px solid var(--bg-panel);
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  color: var(--text-dim);
 }
 
 .app {
@@ -878,5 +923,271 @@ button.link {
 
   .preview {
     padding: 14px;
+  }
+}
+
+/* ---------- 常驻任务区块（连接信息上方，写死在侧栏布局里） ---------- */
+.task-dock {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-panel);
+  max-height: 40dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.tf-head,
+.tf-foot,
+.tf-tabs,
+.tf-add {
+  flex: none;
+}
+
+.tf-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.tf-title {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.tf-count {
+  display: inline-block;
+  margin-left: 3px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--accent-weak);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  vertical-align: 1px;
+}
+
+.tf-tools {
+  display: flex;
+  gap: 2px;
+}
+
+.tf-tools button {
+  min-width: 28px;
+  min-height: 28px;
+  padding: 2px 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  border-radius: 7px;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.tf-tools button:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.tf-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: auto;
+  min-height: 0;
+}
+
+.tf-card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 11px;
+  background: var(--bg);
+}
+
+.tf-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.tf-card-note {
+  font-size: 12px;
+  color: var(--text-dim);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.tf-card-meta {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.tf-card-ok {
+  color: var(--ok);
+}
+
+.tf-card.is-done .tf-card-title {
+  color: var(--text-dim);
+  text-decoration: line-through;
+}
+
+.tf-card-bottom {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.tf-card-bottom button {
+  min-height: 30px;
+  padding: 4px 12px;
+  font-size: 12.5px;
+}
+
+.tf-card-del {
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-dim);
+}
+
+.tf-card-del:hover {
+  background: transparent;
+  color: var(--danger);
+}
+
+.tf-empty {
+  padding: 22px 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.tf-foot {
+  display: flex;
+  align-items: center;
+  border-top: 1px solid var(--border);
+  padding-top: 7px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.tf-me {
+  align-self: flex-start;
+  border: none;
+  background: transparent;
+  min-height: auto;
+  padding: 0;
+  color: var(--text-dim);
+  font-size: 11px;
+  text-decoration: underline dotted;
+}
+
+.tf-me:hover {
+  background: transparent;
+  color: var(--text);
+}
+
+.tf-name-input {
+  width: 110px;
+  font-size: 12px;
+  padding: 3px 6px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.tf-add {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tf-input {
+  width: 100%;
+  font: inherit;
+  font-size: 13px;
+  color: inherit;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+textarea.tf-input {
+  min-height: 56px;
+}
+
+.tf-note {
+  font-size: 12px;
+}
+
+.tf-note-toggle {
+  align-self: flex-start;
+  border: none;
+  background: transparent;
+  min-height: auto;
+  padding: 0;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.tf-note-toggle:hover {
+  background: transparent;
+  color: var(--text);
+}
+
+.tf-submit {
+  align-self: flex-end;
+  min-height: 32px;
+  font-size: 13px;
+}
+
+.tf-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tf-tabs button {
+  border: none;
+  background: transparent;
+  border-radius: 0;
+  min-height: 30px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: var(--text-dim);
+  border-bottom: 2px solid transparent;
+}
+
+.tf-tabs button:hover {
+  background: transparent;
+  color: var(--text);
+}
+
+.tf-tabs button.active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .task-dock {
+    max-height: 34dvh;
+  }
+
+  .tf-input {
+    font-size: 16px; /* 防 iOS 聚焦自动放大 */
   }
 }

@@ -34,6 +34,7 @@ desktop/.vite/
 .claude/
 .cursor/
 .agent/
+.workbuddy/
 
 # Tauri 自动生成的 schema
 tauri/app/gen/

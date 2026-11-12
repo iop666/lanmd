@@ -12,6 +12,49 @@ export function clearToken(): void {
   localStorage.removeItem(TOKEN_KEY);
 }
 
+// ---------- 设备身份（任务单里区分「谁发起 / 谁确认」） ----------
+const DEVICE_ID_KEY = 'lanmd.deviceId';
+const DEVICE_NAME_KEY = 'lanmd.deviceName';
+
+function randomHex(bytes: number): string {
+  const a = new Uint8Array(bytes);
+  crypto.getRandomValues(a);
+  return [...a].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/** 稳定设备 id：localStorage 里有就复用，没有就生成 */
+export function getDeviceId(): string {
+  let id = localStorage.getItem(DEVICE_ID_KEY);
+  if (!id) {
+    id = randomHex(6);
+    localStorage.setItem(DEVICE_ID_KEY, id);
+  }
+  return id;
+}
+
+function guessDeviceName(): string {
+  const ua = navigator.userAgent;
+  if (/iPhone/.test(ua)) return 'iPhone';
+  if (/iPad/.test(ua)) return 'iPad';
+  if (/Android/.test(ua)) return '安卓手机';
+  if (/Macintosh/.test(ua)) return 'Mac';
+  if (/Windows/.test(ua)) return '电脑';
+  return '设备';
+}
+
+export function getDeviceName(): string {
+  const n = localStorage.getItem(DEVICE_NAME_KEY);
+  if (n && n.trim()) return n.trim();
+  const d = guessDeviceName();
+  localStorage.setItem(DEVICE_NAME_KEY, d);
+  return d;
+}
+
+export function setDeviceName(name: string): void {
+  const n = name.trim().slice(0, 16);
+  if (n) localStorage.setItem(DEVICE_NAME_KEY, n);
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -95,6 +138,23 @@ export interface TimedSlot {
   size: number | null;
 }
 
+export type TaskStatus = 'pending' | 'done';
+
+/** 一条任务单：发起方发布，执行方点「已执行」，状态实时回到发起方屏幕 */
+export interface TaskItem {
+  id: string;
+  title: string;
+  note: string;
+  status: TaskStatus;
+  createdAt: number;
+  createdBy: string;
+  createdById: string;
+  doneAt: number | null;
+  doneBy: string | null;
+  doneById: string | null;
+  updatedAt: number;
+}
+
 export const api = {
   health: () => request<HealthResp>('GET', '/api/health', undefined, { noToken: true }),
   pair: (code: string) => request<{ token: string }>('POST', '/api/pair', { code }, { noToken: true }),
@@ -110,4 +170,20 @@ export const api = {
   rename: (from: string, to: string) => request<{ ok: true }>('POST', '/api/file/rename', { from, to }),
   mkdir: (path: string) => request<{ ok: true }>('POST', '/api/file/mkdir', { path }),
   timed: () => request<{ items: TimedSlot[] }>('GET', '/api/timed'),
+  tasks: () => request<{ items: TaskItem[] }>('GET', '/api/tasks'),
+  createTask: (title: string, note: string) =>
+    request<{ item: TaskItem }>('POST', '/api/tasks', {
+      title,
+      note,
+      actor: getDeviceName(),
+      actorId: getDeviceId(),
+    }),
+  setTaskStatus: (id: string, status: TaskStatus) =>
+    request<{ item: TaskItem }>('POST', '/api/tasks/status', {
+      id,
+      status,
+      actor: getDeviceName(),
+      actorId: getDeviceId(),
+    }),
+  deleteTask: (id: string) => request<{ ok: true }>('DELETE', `/api/tasks?id=${enc(id)}`),
 };

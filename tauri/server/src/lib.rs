@@ -7,6 +7,7 @@ mod events;
 mod hash;
 pub mod lan;
 mod static_files;
+mod tasks;
 mod timed;
 mod vault;
 mod watcher;
@@ -58,6 +59,7 @@ struct AppState {
     cfg: RwLock<Config>,
     vault: Arc<vault::Vault>,
     bus: EventBus,
+    tasks: Arc<tasks::TaskStore>,
     token_from_env: bool,
     persist: Arc<dyn Fn(&Config) + Send + Sync>,
     web_dist: Option<PathBuf>,
@@ -79,6 +81,8 @@ pub async fn start_server(opts: StartOpts) -> Result<RunningServer, ApiError> {
     let bus = EventBus::new();
     let vault = Arc::new(vault::Vault::new(Arc::new(cfg.clone()), bus.clone()));
     let timed = Arc::new(timed::TimedVault::new(vault.clone()));
+    // 任务单落盘在 vault/.lanmd/ 下（点目录，文件树与 watcher 都会跳过）
+    let tasks = Arc::new(tasks::TaskStore::new(&vault.root, bus.clone()));
 
     let watcher_handle = watcher::start(vault.clone(), bus.clone())
         .map_err(|e| ApiError::internal(format!("watcher 启动失败: {e}")))?;
@@ -90,6 +94,7 @@ pub async fn start_server(opts: StartOpts) -> Result<RunningServer, ApiError> {
         cfg: RwLock::new(cfg.clone()),
         vault: vault.clone(),
         bus: bus.clone(),
+        tasks: tasks.clone(),
         token_from_env: std::env::var("MDLIVE_TOKEN").is_ok_and(|v| !v.is_empty()),
         persist,
         web_dist: opts.web_dist,
@@ -110,6 +115,8 @@ pub async fn start_server(opts: StartOpts) -> Result<RunningServer, ApiError> {
         .route("/api/connect-info", get(connect_info))
         .route("/api/public-url", post(set_public_url))
         .route("/api/timed", get(timed_list))
+        .route("/api/tasks", get(tasks_list).post(tasks_create).delete(tasks_delete))
+        .route("/api/tasks/status", post(tasks_set_status))
         .fallback(static_fallback)
         .layer(axum::middleware::from_fn_with_state(
             state.clone(),
@@ -403,6 +410,9 @@ fn to_sse(ev: &BusEvent) -> Event {
         BusEvent::TreeChanged => Event::default()
             .event("tree-changed")
             .data(serde_json::json!({}).to_string()),
+        BusEvent::TasksChanged => Event::default()
+            .event("tasks-changed")
+            .data(serde_json::json!({}).to_string()),
     }
 }
 
@@ -565,6 +575,58 @@ async fn timed_list(
         })
         .await;
     Ok(Json(serde_json::json!({ "items": items })))
+}
+
+// ---------------- 任务单 ----------------
+
+fn str_field<'a>(body: &'a serde_json::Value, key: &str) -> &'a str {
+    body.get(key).and_then(|v| v.as_str()).unwrap_or("")
+}
+
+async fn tasks_list(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
+    Json(serde_json::json!({ "items": state.tasks.list().await }))
+}
+
+async fn tasks_create(
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<serde_json::Value>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let item = state
+        .tasks
+        .create(
+            str_field(&body, "title"),
+            str_field(&body, "note"),
+            str_field(&body, "actor"),
+            str_field(&body, "actorId"),
+        )
+        .await?;
+    Ok(Json(serde_json::json!({ "item": item })))
+}
+
+/// 确认执行 / 撤销执行都走这里：status = done | pending
+async fn tasks_set_status(
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<serde_json::Value>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let item = state
+        .tasks
+        .set_status(
+            str_field(&body, "id"),
+            str_field(&body, "status"),
+            str_field(&body, "actor"),
+            str_field(&body, "actorId"),
+        )
+        .await?;
+    Ok(Json(serde_json::json!({ "item": item })))
+}
+
+async fn tasks_delete(
+    State(state): State<Arc<AppState>>,
+    axum::extract::Query(q): axum::extract::Query<HashMap<String, String>>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let id = q.get("id").map(|s| s.as_str()).unwrap_or("");
+    state.tasks.remove(id).await?;
+    Ok(Json(serde_json::json!({ "ok": true })))
 }
 
 async fn static_fallback(

@@ -9,6 +9,8 @@ pub enum BusEvent {
     FileChanged { path: String, version: String, mtime: f64 },
     FileRemoved { path: String },
     TreeChanged,
+    /// 任务单有增删或状态变化，各端重新拉一次列表
+    TasksChanged,
 }
 
 const CHANNEL_CAP: usize = 256;
@@ -34,6 +36,7 @@ impl EventBus {
             BusEvent::FileChanged { path, .. } => format!("file-changed {path}"),
             BusEvent::FileRemoved { path } => format!("file-removed {path}"),
             BusEvent::TreeChanged => "tree-changed".into(),
+            BusEvent::TasksChanged => "tasks-changed".into(),
         };
         eprintln!("[info] [sse] 广播 {kind}");
         // 无订阅者时 send 返回 Err，正常忽略

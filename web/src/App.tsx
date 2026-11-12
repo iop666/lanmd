@@ -3,9 +3,14 @@ import {
   api,
   ApiError,
   clearToken,
+  getDeviceId,
+  getDeviceName,
   getStoredToken,
+  setDeviceName,
   storeToken,
   type FileResp,
+  type TaskItem,
+  type TaskStatus,
   type TimedSlot,
   type TreeNode,
 } from './api';
@@ -19,6 +24,7 @@ import StatusBar from './components/StatusBar';
 import Connect from './components/Connect';
 import ConnectInfo from './components/ConnectInfo';
 import TimedPanel from './components/TimedPanel';
+import TaskFloat from './components/TaskFloat';
 import Icon from './components/Icon';
 
 interface OpenFile {
@@ -112,6 +118,10 @@ export default function App() {
   const [showTimed, setShowTimed] = useState(false);
   const [timedSlots, setTimedSlots] = useState<TimedSlot[]>([]);
   const [timedFetchedAt, setTimedFetchedAt] = useState(0);
+  const [addSignal, setAddSignal] = useState(0);
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const [deviceId] = useState(() => getDeviceId());
+  const [deviceName, setDeviceNameState] = useState(() => getDeviceName());
   const [plusMenu, setPlusMenu] = useState<{ x: number; y: number } | null>(null);
   const importFileRef = useRef<HTMLInputElement | null>(null);
   const importFolderRef = useRef<HTMLInputElement | null>(null);
@@ -327,6 +337,62 @@ export default function App() {
     return () => window.clearInterval(t);
   }, [token, refreshTimed]);
 
+  // ---------- 待确认事项（悬浮卡片） ----------
+  const refreshTasks = useCallback(async (): Promise<void> => {
+    if (!getStoredToken()) return;
+    try {
+      const r = await api.tasks();
+      setTasks(r.items);
+    } catch {
+      /* 服务不可达时保留旧列表 */
+    }
+  }, []);
+  const refreshTasksRef = useRef(refreshTasks);
+  refreshTasksRef.current = refreshTasks;
+
+  useEffect(() => {
+    if (!token) return;
+    void refreshTasks();
+  }, [token, refreshTasks]);
+
+  const addTask = useCallback(async (title: string, note: string): Promise<boolean> => {
+    try {
+      await api.createTask(title, note);
+      await refreshTasksRef.current();
+      return true;
+    } catch {
+      setNotice('发布失败（服务未连接？）');
+      return false;
+    }
+  }, []);
+
+  const changeTaskStatus = useCallback((id: string, status: TaskStatus): void => {
+    void (async () => {
+      try {
+        await api.setTaskStatus(id, status);
+        await refreshTasksRef.current();
+      } catch {
+        setNotice('操作失败');
+      }
+    })();
+  }, []);
+
+  const removeTask = useCallback((id: string): void => {
+    void (async () => {
+      try {
+        await api.deleteTask(id);
+        await refreshTasksRef.current();
+      } catch {
+        setNotice('删除失败');
+      }
+    })();
+  }, []);
+
+  const renameDevice = useCallback((name: string): void => {
+    setDeviceName(name);
+    setDeviceNameState(getDeviceName());
+  }, []);
+
   // ---------- 复制 ----------
   async function copyAs(kind: 'source' | 'text'): Promise<void> {
     const cur = currentRef.current;
@@ -472,6 +538,7 @@ export default function App() {
     // 重连成功：立即重新对齐，防止断线期间漏事件
     scheduleTreeRefresh();
     void reconcileCurrent();
+    void refreshTasksRef.current();
   }, [scheduleTreeRefresh, reconcileCurrent]);
 
   useEffect(() => {
@@ -482,6 +549,7 @@ export default function App() {
       onFileChanged,
       onFileRemoved,
       onTreeChanged: scheduleTreeRefresh,
+      onTasksChanged: () => void refreshTasksRef.current(),
     });
     return () => h.close();
   }, [token, onSseOpen, onFileChanged, onFileRemoved, scheduleTreeRefresh]);
@@ -690,6 +758,8 @@ export default function App() {
   }
 
   const q = search.trim().toLowerCase();
+  // 所有未完成事项：有就浮出卡片，不区分发起人
+  const pendingCount = tasks.filter((t) => t.status === 'pending').length;
   // 「当前目录」：当前打开文件所在目录；未打开文件、或正在编辑暂存槽（.timed/）时为根。
   // 新建/上传都落在当前目录
   const currentDir =
@@ -729,9 +799,27 @@ export default function App() {
             />
           ) : null}
         </nav>
+        <TaskFloat
+          items={tasks}
+          deviceId={deviceId}
+          deviceName={deviceName}
+          addSignal={addSignal}
+          onChangeName={renameDevice}
+          onAdd={addTask}
+          onSetStatus={changeTaskStatus}
+          onDelete={removeTask}
+        />
         <div className="sidebar-foot">
-          <button onClick={() => setConnectInfo({ firstTime: false })}>
+          <button className="foot-connect" onClick={() => setConnectInfo({ firstTime: false })}>
             <Icon name="link" size={15} /> 连接信息 / 配对码
+          </button>
+          <button
+            className="foot-task-btn"
+            title="添加待确认事项"
+            onClick={() => setAddSignal((n) => n + 1)}
+          >
+            <Icon name="tasks" size={16} />
+            {pendingCount > 0 ? <span className="foot-badge">{pendingCount}</span> : null}
           </button>
         </div>
       </aside>
@@ -926,6 +1014,9 @@ export default function App() {
             </button>
             <button onClick={() => { setPlusMenu(null); setShowTimed(true); void refreshTimedRef.current(); }}>
               倒计时暂存库
+            </button>
+            <button onClick={() => { setPlusMenu(null); setAddSignal((n) => n + 1); }}>
+              添加待确认事项
             </button>
           </div>
         </>

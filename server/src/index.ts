@@ -11,12 +11,14 @@ import { Vault, HttpError } from './vault.js';
 import { startWatcher } from './watcher.js';
 import { EventBus } from './events.js';
 import { TimedVault } from './timed.js';
+import { TaskStore } from './tasks.js';
 import { registerAuth } from './auth.js';
 import { registerTreeRoutes } from './routes/tree.js';
 import { registerFileRoutes } from './routes/file.js';
 import { registerEventsRoute } from './routes/events.js';
 import { registerPairRoutes } from './routes/pair.js';
 import { registerTimedRoutes } from './routes/timed.js';
+import { registerTaskRoutes } from './routes/tasks.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../package.json') as { version?: string };
@@ -56,6 +58,10 @@ export async function startServer(opts?: StartServerOpts): Promise<RunningServer
   const timed = new TimedVault(vault, () => {
     bus.broadcast({ kind: 'tree-changed' });
   });
+  // 任务单落盘在 vault/.lanmd/ 下（点目录，文件树与 watcher 都会跳过）
+  const tasks = new TaskStore(vault.root, () => {
+    bus.broadcast({ kind: 'tasks-changed' });
+  });
 
   registerAuth(app, () => cfg.token);
   app.get('/api/health', async () => ({
@@ -68,6 +74,7 @@ export async function startServer(opts?: StartServerOpts): Promise<RunningServer
   registerFileRoutes(app, vault);
   registerEventsRoute(app, bus);
   registerTimedRoutes(app, timed);
+  registerTaskRoutes(app, tasks);
   registerPairRoutes(app, {
     getToken: () => cfg.token,
     setToken: (code) => {

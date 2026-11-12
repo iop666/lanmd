@@ -582,3 +582,128 @@ test('timed：time 编辑其他槽不受影响', async () => {
     if (it.id !== '10m-1') assert.equal(it.exists, false, `${it.id} 不应受影响`);
   }
 });
+
+// ---------------- 任务单（左下角发布 → 对方点「已执行」） ----------------
+
+let taskId = '';
+
+function taskPost(url, body) {
+  return fetch(`${base}${url}`, { method: 'POST', headers: H, body: JSON.stringify(body) });
+}
+
+// DELETE 不带 Content-Type：Fastify 见到 application/json 却无 body 会直接 400
+function taskDel(id) {
+  return fetch(`${base}/api/tasks?id=${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${TOKEN}` },
+  });
+}
+
+test('tasks：初始为空列表', async () => {
+  const res = await fetch(`${base}/api/tasks`, { headers: H });
+  assert.equal(res.status, 200);
+  const { items } = await res.json();
+  assert.deepEqual(items, []);
+});
+
+test('tasks：发布后进入待执行，记录发起人与设备 id', async () => {
+  const res = await taskPost('/api/tasks', {
+    title: '把阳台的快递拿进来',
+    note: '放门口就行',
+    actor: '电脑',
+    actorId: 'dev-a',
+  });
+  assert.equal(res.status, 200);
+  const { item } = await res.json();
+  assert.equal(item.title, '把阳台的快递拿进来');
+  assert.equal(item.note, '放门口就行');
+  assert.equal(item.status, 'pending');
+  assert.equal(item.createdBy, '电脑');
+  assert.equal(item.createdById, 'dev-a');
+  assert.equal(item.doneAt, null);
+  assert.equal(item.doneBy, null);
+  assert.ok(item.id.length >= 8, `id=${item.id}`);
+  taskId = item.id;
+
+  const { items } = await (await fetch(`${base}/api/tasks`, { headers: H })).json();
+  assert.equal(items.length, 1);
+  assert.equal(items[0].id, taskId);
+});
+
+test('tasks：落盘到 vault/.lanmd/tasks.json，且不出现在文件树', async () => {
+  const fs = await import('node:fs/promises');
+  const raw = await fs.readFile(path.join(vaultDir, '.lanmd', 'tasks.json'), 'utf8');
+  const parsed = JSON.parse(raw);
+  assert.equal(parsed.items.length, 1);
+  assert.equal(parsed.items[0].id, taskId);
+  const { items } = await (await fetch(`${base}/api/tree`, { headers: H })).json();
+  assert.ok(!JSON.stringify(items).includes('.lanmd'), '文件树不应包含 .lanmd');
+});
+
+test('tasks：点「已执行」记录确认人；重复提交幂等；可撤销回待执行', async () => {
+  const done = await taskPost('/api/tasks/status', {
+    id: taskId,
+    status: 'done',
+    actor: '手机',
+    actorId: 'dev-b',
+  });
+  assert.equal(done.status, 200);
+  const d = (await done.json()).item;
+  assert.equal(d.status, 'done');
+  assert.ok(d.doneAt > 0);
+  assert.equal(d.doneBy, '手机');
+  assert.equal(d.doneById, 'dev-b');
+
+  const again = await (
+    await taskPost('/api/tasks/status', { id: taskId, status: 'done', actor: '手机', actorId: 'dev-b' })
+  ).json();
+  assert.equal(again.item.doneAt, d.doneAt, '重复确认不应刷新时间戳');
+
+  const undo = await (
+    await taskPost('/api/tasks/status', { id: taskId, status: 'pending', actor: '电脑', actorId: 'dev-a' })
+  ).json();
+  assert.equal(undo.item.status, 'pending');
+  assert.equal(undo.item.doneAt, null);
+  assert.equal(undo.item.doneBy, null);
+  assert.equal(undo.item.doneById, null);
+});
+
+test('tasks：空标题 400、非法 status 400、未知 id 404', async () => {
+  const empty = await taskPost('/api/tasks', { title: '   ', actor: '电脑', actorId: 'dev-a' });
+  assert.equal(empty.status, 400);
+
+  const badStatus = await taskPost('/api/tasks/status', { id: taskId, status: 'whatever' });
+  assert.equal(badStatus.status, 400);
+
+  const missing = await taskPost('/api/tasks/status', { id: 'not-exist', status: 'done' });
+  assert.equal(missing.status, 404);
+});
+
+test('tasks：超长内容按上限截断（标题 200 / 备注 2000）', async () => {
+  const res = await taskPost('/api/tasks', {
+    title: 'x'.repeat(500),
+    note: 'y'.repeat(3000),
+    actor: '电脑',
+    actorId: 'dev-a',
+  });
+  const { item } = await res.json();
+  assert.equal(item.title.length, 200);
+  assert.equal(item.note.length, 2000);
+  const del = await taskDel(item.id);
+  assert.equal(del.status, 200);
+});
+
+test('tasks：删除后不在列表，再删 404', async () => {
+  const res = await taskDel(taskId);
+  assert.equal(res.status, 200);
+  const { items } = await (await fetch(`${base}/api/tasks`, { headers: H })).json();
+  assert.equal(items.length, 0);
+
+  const again = await taskDel(taskId);
+  assert.equal(again.status, 404);
+});
+
+test('tasks：无 token 401', async () => {
+  const res = await fetch(`${base}/api/tasks`);
+  assert.equal(res.status, 401);
+});

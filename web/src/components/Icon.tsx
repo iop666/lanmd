@@ -11,6 +11,7 @@ export type IconName =
   | 'copy-code'
   | 'copy-text'
   | 'timer'
+  | 'tasks'
   | 'menu'
   | 'close'
   | 'link';
@@ -37,6 +38,11 @@ const PATHS: Record<IconName, string[]> = {
   'copy-code': ['M9 9h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H11a2 2 0 0 1-2-2V9z', 'M5 15H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1'],
   'copy-text': ['M8 8h12 M8 12h12 M8 16h8', 'M4 4h2v14H4z'],
   timer: ['M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16z', 'M12 9v4l2.5 2.5', 'M9 2h6'],
+  tasks: [
+    'M9 3h6v3H9z',
+    'M9 4.5H6.5a1 1 0 0 0-1 1V20a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V5.5a1 1 0 0 0-1-1H15',
+    'M8.5 13.5l2.5 2.5 4.5-5',
+  ],
   menu: ['M4 6h16 M4 12h16 M4 18h16'],
   close: ['M6 6l12 12 M18 6L6 18'],
   link: ['M10 14a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1', 'M14 10a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1'],

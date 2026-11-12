@@ -7,6 +7,8 @@ export interface SseHandlers {
   onFileChanged: (ev: { path: string; version: string; mtime: number }) => void;
   onFileRemoved: (ev: { path: string }) => void;
   onTreeChanged: () => void;
+  /** 任务单有增删或状态变化（对方点了「已执行」也会触发） */
+  onTasksChanged: () => void;
 }
 
 export function connectEvents(token: string, h: SseHandlers): { close: () => void } {
@@ -39,6 +41,7 @@ export function connectEvents(token: string, h: SseHandlers): { close: () => voi
       }
     });
     es.addEventListener('tree-changed', () => h.onTreeChanged());
+    es.addEventListener('tasks-changed', () => h.onTasksChanged());
     es.onerror = () => {
       if (es && es.readyState === EventSource.CLOSED) {
         // 浏览器放弃（如服务重启过快 / 401），手动退避重试
